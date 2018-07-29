@@ -39,18 +39,22 @@ struct BMP_Data
     unsigned char* data[3];
 };
 
-//loads BMP data into struct/buffer from file
+//Basic Tools
 void BMP_Load(struct BMP_Data* bmp, const char* filename);
 void BMP_Save(struct BMP_Data* bmp, const char* filename);
+void BMP_Print(struct BMP_Data bmp);
+void BMP_Destroy(struct BMP_Data* bmp);
+//filters
 void BMP_ModGrayscale(struct BMP_Data* bmp);
 void BMP_ModBW(struct BMP_Data* bmp);
 void BMP_ModRed(struct BMP_Data* bmp);
 void BMP_ModGreen(struct BMP_Data* bmp);
 void BMP_ModBlue(struct BMP_Data* bmp);
 void BMP_ModBlur(struct BMP_Data* bmp);
-void BMP_Print(struct BMP_Data bmp);
-void BMP_Destroy(struct BMP_Data* bmp);
+//ktp
+int BMP_GetColor(struct BMP_Data* bmp);
 
+//Basic Tools
 void BMP_Load(struct BMP_Data* bmp, const char* filename)
 {
     //open file for reading binary
@@ -182,6 +186,20 @@ void BMP_Save(struct BMP_Data* bmp, const char* filename)
     //close file
     fclose(file);
 }
+void BMP_Print(struct BMP_Data bmp)
+{
+    //BMP Header
+    printf("Header: %c%c\nSize: %X\nSpec: %X\nOffset: %X\n", (0xFF00&bmp.bmp.header)>>8, (0xFF&bmp.bmp.header), bmp.bmp.size, bmp.bmp.spec, bmp.bmp.offset);
+    //DIB Header
+    printf("Header_Size: %X\nWidth: %X\nHeight: %X\nOne: %X\nDepth: %X\nCompression: %X\nData_Size: %X\nHRes: %X\nVRes: %X\nColorspace: %c%c%c%c\n", bmp.dib.header_size, bmp.dib.width, bmp.dib.height, bmp.dib.one, bmp.dib.depth, bmp.dib.compression, bmp.dib.data_size, bmp.dib.horizontal_resolution, bmp.dib.vertical_resolution, (0xFF000000&bmp.dib.colorspace)>>3*8, (0xFF0000&bmp.dib.colorspace)>>2*8, (0xFF00&bmp.dib.colorspace)>>1*8, (0xFF&bmp.dib.colorspace)>>0*8);
+}
+void BMP_Destroy(struct BMP_Data* bmp)
+{
+    free(bmp->data[R]);
+    free(bmp->data[G]);
+    free(bmp->data[B]);
+}
+//filters
 void BMP_ModGrayscale(struct BMP_Data* bmp)
 {
     int i;      //iterator
@@ -341,16 +359,25 @@ void BMP_ModBlur(struct BMP_Data* bmp)
     free(orig[G]);
     free(orig[B]);
 }
-void BMP_Print(struct BMP_Data bmp)
+//ktp
+int BMP_GetColor(struct BMP_Data* bmp)
 {
-    //BMP Header
-    printf("Header: %c%c\nSize: %X\nSpec: %X\nOffset: %X\n", (0xFF00&bmp.bmp.header)>>8, (0xFF&bmp.bmp.header), bmp.bmp.size, bmp.bmp.spec, bmp.bmp.offset);
-    //DIB Header
-    printf("Header_Size: %X\nWidth: %X\nHeight: %X\nOne: %X\nDepth: %X\nCompression: %X\nData_Size: %X\nHRes: %X\nVRes: %X\nColorspace: %c%c%c%c\n", bmp.dib.header_size, bmp.dib.width, bmp.dib.height, bmp.dib.one, bmp.dib.depth, bmp.dib.compression, bmp.dib.data_size, bmp.dib.horizontal_resolution, bmp.dib.vertical_resolution, (0xFF000000&bmp.dib.colorspace)>>3*8, (0xFF0000&bmp.dib.colorspace)>>2*8, (0xFF00&bmp.dib.colorspace)>>1*8, (0xFF&bmp.dib.colorspace)>>0*8);
-}
-void BMP_Destroy(struct BMP_Data* bmp)
-{
-    free(bmp->data[R]);
-    free(bmp->data[G]);
-    free(bmp->data[B]);
+    int i = 0;      //iterator
+    int sum[3] = { 0, 0, 0 };    //self-explanatory
+
+    //sum data
+    for (i = 0; i < bmp->dib.data_size/3; ++i)
+    {
+        sum[R] += bmp->data[R][i];
+        sum[G] += bmp->data[G][i];
+        sum[B] += bmp->data[B][i];
+    }
+
+    //make avg from sum
+    sum[R] /= (bmp->dib.data_size/3);
+    sum[G] /= (bmp->dib.data_size/3);
+    sum[B] /= (bmp->dib.data_size/3);
+
+    //return combination of avgs = 0xRRGGBB
+    return ((sum[R] << 16) + (sum[G] << 8) + (sum[B] << 0));
 }
