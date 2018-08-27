@@ -1,3 +1,6 @@
+/* TODO */
+/* SDL_RWops - live preview */
+/* slider - partial filter */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
