@@ -13,15 +13,13 @@ const int BLUR_GRID_ROW = 7;
 const int BLUR_GRID_SIZE = 49;
 
 //structs to hold BMP info/data
-struct BMP_Header
-{
+struct BMP_Header {
     unsigned short header;
     unsigned int size;
     unsigned int spec;      //program that created this specific (0x0 here)
     unsigned int offset;    //versace
 };
-struct DIB_Header
-{
+struct DIB_Header {
     unsigned int header_size;
     int width;
     int height;
@@ -35,8 +33,7 @@ struct DIB_Header
     unsigned int colorspace;
     //64Bytes unused here   //zeroes here
 };
-struct BMP_Data
-{
+struct BMP_Data {
     struct BMP_Header bmp;
     struct DIB_Header dib;
     unsigned char* data[3];
@@ -58,13 +55,11 @@ void BMP_ModBlur(struct BMP_Data* bmp);
 int BMP_GetColor(struct BMP_Data* bmp);
 
 //Basic Tools
-void BMP_Load(struct BMP_Data* bmp, const char* filename)
-{
+void BMP_Load(struct BMP_Data* bmp, const char* filename) {
     //open file for reading binary
     FILE* file = fopen(filename, "rb");
     //error checking for fopen
-    if (file == NULL)
-    {
+    if (file == NULL) {
         printf("Error: failed to open %s\n", filename);
         return;
     }
@@ -97,8 +92,7 @@ void BMP_Load(struct BMP_Data* bmp, const char* filename)
     bmp->data[G] = (unsigned char*)malloc(bmp->dib.data_size/3);    //allocate for greens
     bmp->data[B] = (unsigned char*)malloc(bmp->dib.data_size/3);    //allocate for blues
     fseek(file, bmp->bmp.offset, SEEK_SET);     //go to where data starts
-    for (i = 0; i < bmp->dib.data_size/3; ++i)    //get pixel data
-    {
+    for (i = 0; i < bmp->dib.data_size/3; ++i) {    //get pixel data
         //order reversed for little-endianness
         bmp->data[B][i] = (unsigned char)fgetc(file);
         bmp->data[G][i] = (unsigned char)fgetc(file);
@@ -108,11 +102,9 @@ void BMP_Load(struct BMP_Data* bmp, const char* filename)
     //close file
     fclose(file);
 }
-void BMP_Save(struct BMP_Data* bmp, const char* filename)
-{
+void BMP_Save(struct BMP_Data* bmp, const char* filename) {
     FILE* file = fopen(filename, "wb");
-    if (file == NULL)
-    {
+    if (file == NULL) {
         printf("Error: failed to open %s\n", filename);
         return;
     }
@@ -178,8 +170,7 @@ void BMP_Save(struct BMP_Data* bmp, const char* filename)
     for (i = 0; i < bmp->bmp.offset - HEADER_SIZE; ++i)       //extra zeroes for stuff irrelevant for sRGB
         fputc(0, file);
     //write pixel data to file
-    for (i = 0; i < bmp->dib.data_size/3; ++i)
-    {
+    for (i = 0; i < bmp->dib.data_size/3; ++i) {
         //order reversed for little-endianness
         fputc((unsigned char)bmp->data[B][i], file);
         fputc((unsigned char)bmp->data[G][i], file);
@@ -189,27 +180,23 @@ void BMP_Save(struct BMP_Data* bmp, const char* filename)
     //close file
     fclose(file);
 }
-void BMP_Print(struct BMP_Data bmp)
-{
+void BMP_Print(struct BMP_Data bmp) {
     //BMP Header
     printf("Header: %c%c\nSize: %X\nSpec: %X\nOffset: %X\n", (0xFF00&bmp.bmp.header)>>8, (0xFF&bmp.bmp.header), bmp.bmp.size, bmp.bmp.spec, bmp.bmp.offset);
     //DIB Header
     printf("Header_Size: %X\nWidth: %X\nHeight: %X\nOne: %X\nDepth: %X\nCompression: %X\nData_Size: %X\nHRes: %X\nVRes: %X\nColorspace: %c%c%c%c\n", bmp.dib.header_size, bmp.dib.width, bmp.dib.height, bmp.dib.one, bmp.dib.depth, bmp.dib.compression, bmp.dib.data_size, bmp.dib.horizontal_resolution, bmp.dib.vertical_resolution, (0xFF000000&bmp.dib.colorspace)>>3*8, (0xFF0000&bmp.dib.colorspace)>>2*8, (0xFF00&bmp.dib.colorspace)>>1*8, (0xFF&bmp.dib.colorspace)>>0*8);
 }
-void BMP_Destroy(struct BMP_Data* bmp)
-{
+void BMP_Destroy(struct BMP_Data* bmp) {
     free(bmp->data[R]);
     free(bmp->data[G]);
     free(bmp->data[B]);
 }
 //filters
-void BMP_ModGrayscale(struct BMP_Data* bmp)
-{
+void BMP_ModGrayscale(struct BMP_Data* bmp) {
     int i;      //iterator
     int avg;    //to hold grayscale average
     //set each pixels RGB to the same based on average
-    for (i = 0; i < bmp->dib.data_size/3; ++i)
-    {
+    for (i = 0; i < bmp->dib.data_size/3; ++i) {
         avg = (bmp->data[R][i] + bmp->data[G][i] + bmp->data[B][i])/3;
 
         bmp->data[R][i] = avg;
@@ -217,68 +204,57 @@ void BMP_ModGrayscale(struct BMP_Data* bmp)
         bmp->data[B][i] = avg;
     }
 }
-void BMP_ModBW(struct BMP_Data* bmp)
-{
+void BMP_ModBW(struct BMP_Data* bmp) {
     int i;      //iterator
     int avg;    //to hold average
     //set each pixels RGB to max or min based on average
-    for (i = 0; i < bmp->dib.data_size/3; ++i)
-    {
+    for (i = 0; i < bmp->dib.data_size/3; ++i) {
         
         avg = (bmp->data[R][i] + bmp->data[G][i] + bmp->data[B][i])/3;
 
-        if (avg < 0x80)
-        {
+        if (avg < 0x80) {
             bmp->data[R][i] = 0x0;
             bmp->data[G][i] = 0x0;
             bmp->data[B][i] = 0x0;
         }
-        else
-        {
+        else {
             bmp->data[R][i] = 0xFF;
             bmp->data[G][i] = 0xFF;
             bmp->data[B][i] = 0xFF;
         }
     }
 }
-void BMP_ModRed(struct BMP_Data* bmp)
-{
+void BMP_ModRed(struct BMP_Data* bmp) {
     int i;      //iterator
     //increase red in each pixel
-    for (i = 0; i < bmp->dib.data_size/3; ++i)
-    {
+    for (i = 0; i < bmp->dib.data_size/3; ++i) {
         if(bmp->data[R][i] >= 0xA0)
             bmp->data[R][i] = 0xFF;
         else
             bmp->data[R][i] += 0x60;
     }
 }
-void BMP_ModGreen(struct BMP_Data* bmp)
-{
+void BMP_ModGreen(struct BMP_Data* bmp) {
     int i;      //iterator
     //increase green in each pixel
-    for (i = 0; i < bmp->dib.data_size/3; ++i)
-    {
+    for (i = 0; i < bmp->dib.data_size/3; ++i) {
         if(bmp->data[G][i] >= 0xA0)
             bmp->data[G][i] = 0xFF;
         else
             bmp->data[G][i] += 0x60;
     }
 }
-void BMP_ModBlue(struct BMP_Data* bmp)
-{
+void BMP_ModBlue(struct BMP_Data* bmp) {
     int i;      //iterator
     //increase blue in each pixel
-    for (i = 0; i < bmp->dib.data_size/3; ++i)
-    {
+    for (i = 0; i < bmp->dib.data_size/3; ++i) {
         if(bmp->data[B][i] >= 0xA0)
             bmp->data[B][i] = 0xFF;
         else
             bmp->data[B][i] += 0x60;
     }
 }
-void BMP_ModBlur(struct BMP_Data* bmp)
-{
+void BMP_ModBlur(struct BMP_Data* bmp) {
 //For now off image at top/bottom assume missing values are black
 // also left/right edges wrap
     int i, j;      //iterators
@@ -287,8 +263,7 @@ void BMP_ModBlur(struct BMP_Data* bmp)
     orig[R] = (unsigned char*)malloc(bmp->dib.data_size/3);
     orig[G] = (unsigned char*)malloc(bmp->dib.data_size/3);
     orig[B] = (unsigned char*)malloc(bmp->dib.data_size/3);
-    for (i = 0; i < bmp->dib.data_size/3; ++i)
-    {
+    for (i = 0; i < bmp->dib.data_size/3; ++i) {
         orig[R][i] = bmp->data[R][i];
         orig[G][i] = bmp->data[G][i];
         orig[B][i] = bmp->data[B][i];
@@ -311,23 +286,20 @@ void BMP_ModBlur(struct BMP_Data* bmp)
         w[17] = w[23] = w[25] = w[31] = 0.040749; //max edgeness
         //current pixel
         w[24] = 0.046056;
-    for (i = 0; i < bmp->dib.data_size/3; ++i)
-    {
+    for (i = 0; i < bmp->dib.data_size/3; ++i) {
         //clear all
         bmp->data[R][i] = 0;
         bmp->data[G][i] = 0;
         bmp->data[B][i] = 0;
         //set adjacent pixel matrix
-        for (j = 0; j < BLUR_GRID_SIZE; ++j)
-        {
+        for (j = 0; j < BLUR_GRID_SIZE; ++j) {
             //set modifier based on location relative to current pixel
             int mod = 0;
             mod += ((int)bmp->dib.width * ((BLUR_GRID_ROW/2) - j/BLUR_GRID_ROW)); //for row offset
             mod += (j%BLUR_GRID_ROW - (BLUR_GRID_ROW/2)); //for column offset
             //just a little bounds checking
             // because nobody wants a segfault
-            if ((i + mod) >= bmp->dib.data_size/3 || (i + mod) < 0)
-            {
+            if ((i + mod) >= bmp->dib.data_size/3 || (i + mod) < 0) {
                 //R
                 adj[R][j] = 0xFF;
                 //G
@@ -335,8 +307,7 @@ void BMP_ModBlur(struct BMP_Data* bmp)
                 //B
                 adj[B][j] = 0xFF;
             }
-            else //all is well then
-            {
+            else {  //all is well then
                 //R
                 adj[R][j] = orig[R][i + mod];
                 //G
@@ -346,8 +317,7 @@ void BMP_ModBlur(struct BMP_Data* bmp)
             }
         }
         //blur the rest
-        for (j = 0; j < BLUR_GRID_SIZE; ++j)
-        {
+        for (j = 0; j < BLUR_GRID_SIZE; ++j) {
             //R
             bmp->data[R][i] += (unsigned char)((double)adj[R][j] * w[j]);
             //G
@@ -363,14 +333,12 @@ void BMP_ModBlur(struct BMP_Data* bmp)
     free(orig[B]);
 }
 //ktp
-int BMP_GetColor(struct BMP_Data* bmp)
-{
+int BMP_GetColor(struct BMP_Data* bmp) {
     int i = 0;      //iterator
     int sum[3] = { 0, 0, 0 };    //self-explanatory
 
     //sum data
-    for (i = 0; i < bmp->dib.data_size/3; ++i)
-    {
+    for (i = 0; i < bmp->dib.data_size/3; ++i) {
         sum[R] += bmp->data[R][i];
         sum[G] += bmp->data[G][i];
         sum[B] += bmp->data[B][i];
